@@ -1,0 +1,24 @@
+# Learn more about configuring your app at
+# https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "f62a457f1274c5ef2c254246113a2e5e"
+application_url = "https://example.com"
+embedded = true
+name = "cart-fee"
+
+[webhooks]
+api_version = "2026-10"
+
+[access_scopes]
+scopes = "write_products,write_metaobjects,write_metaobject_definitions,write_app_proxy"
+
+[auth]
+redirect_urls = [ "https://example.com/api/auth" ]
+
+[build]
+automatically_update_urls_on_dev = true
+
+[app_proxy]
+url = "/apps/cart-fee"
+prefix = "apps"
+subpath = "cart-fee"
