@@ -3,10 +3,9 @@ import prisma from "../db.server";
 
 export async function loader({request}) {
   const url = new URL(request.url);
-
-  await authenticate.public.appProxy(request);
-
-  const shop = url.searchParams.get("shop");
+  const context = await authenticate.public.appProxy(request);
+  const requestShop = url.searchParams.get("shop");
+  const shop = context.session?.shop;
 
   if (!shop) {
     return Response.json(
@@ -14,7 +13,18 @@ export async function loader({request}) {
         enabled: false,
       },
       {
-        status: 400,
+        status: 401,
+      },
+    );
+  }
+
+  if (requestShop && requestShop !== shop) {
+    return Response.json(
+      {
+        enabled: false,
+      },
+      {
+        status: 403,
       },
     );
   }

@@ -5,10 +5,8 @@ export async function loader({request}) {
   const context = await authenticate.public.appProxy(request);
 
   const url = new URL(request.url);
-
-  const shop =
-    url.searchParams.get("shop") ||
-    context.session?.shop;
+  const requestShop = url.searchParams.get("shop");
+  const shop = context.session?.shop;
 
   if (!shop) {
     return Response.json(
@@ -17,6 +15,17 @@ export async function loader({request}) {
       },
       {
         status: 401,
+      },
+    );
+  }
+
+  if (requestShop && requestShop !== shop) {
+    return Response.json(
+      {
+        enabled: false,
+      },
+      {
+        status: 403,
       },
     );
   }
