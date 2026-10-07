@@ -41,6 +41,7 @@ export async function loader({request}) {
       title: "Handling fee",
       type: "percentage",
       value: 0,
+      feeVariantId: null,
     });
   }
 
@@ -49,5 +50,6 @@ export async function loader({request}) {
     title: settings.title,
     type: settings.type,
     value: Number(settings.value),
+    feeVariantId: settings.feeVariantId,
   });
 }

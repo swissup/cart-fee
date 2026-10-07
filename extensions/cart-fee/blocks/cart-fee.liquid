@@ -1,14 +1,34 @@
-<cart-fee class="cart-fee" data-cart-fee>
-  <span class="cart-fee__title"></span>
-  <span class="cart-fee__value"></span>
+{% if request.page_type == 'cart' %}
+<cart-fee
+  class="cart-fee"
+  data-cart-fee
+  {{ block.shopify_attributes }}  
+  style="--cart-fee-text-foreground: {{ block.settings.text_foreground }}; --cart-fee-button-background: {{ block.settings.button_background }};{% if block.settings.bold_text %} --cart-fee-bold-text: bold;{% else %} --cart-fee-bold-text: normal;{% endif %}"
+>
+  <span class="cart-fee__title" style="color: var(--cart-fee-text-foreground);font-weight: var(--cart-fee-bold-text);"></span>
+  <span class="cart-fee__value" style="color: var(--cart-fee-text-foreground); display: inline-block; padding: 0.25rem 0.5rem;font-weight: var(--cart-fee-bold-text);"></span>
 </cart-fee>
 
 <script src="{{ 'cart-fee.js' | asset_url }}" defer></script>
+{% endif %}
 
 {% schema %}
 {
-  "name": "t:app.cart-fee.name",
+  "name": "Cart fee",
   "target": "section",
-  "settings": []
+  "settings": [    
+    {
+      "type": "color",
+      "id": "text_foreground",
+      "label": "Text foreground",
+      "default": "#222222"
+    },
+    {
+      "type": "checkbox",
+      "id": "bold_text",
+      "label": "Bold text",
+      "default": false
+    }
+  ]
 }
 {% endschema %}

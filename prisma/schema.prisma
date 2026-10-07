@@ -34,6 +34,7 @@ model CartFeeSettings {
   title     String   @default("Handling fee")
   type      String   @default("percentage")
   value     Decimal  @default(0)
+  feeVariantId String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
