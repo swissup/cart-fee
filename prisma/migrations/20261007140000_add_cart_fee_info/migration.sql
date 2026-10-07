@@ -1,0 +1,1 @@
+ALTER TABLE "CartFeeSettings" ADD COLUMN "info" TEXT NOT NULL DEFAULT '';

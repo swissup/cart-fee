@@ -23,6 +23,7 @@ export async function loader({request}) {
     settings: {
       enabled: settings.enabled,
       title: settings.title,
+      info: settings.info,
       type: settings.type,
       value: settings.value.toString(),
       feeVariantId: settings.feeVariantId || "",
@@ -37,6 +38,7 @@ export async function action({request}) {
 
   const enabled = formData.get("enabled") === "on";
   const title = String(formData.get("title") || "Handling fee");
+  const info = String(formData.get("info") || "").trim();
   const type = String(formData.get("type"));
   const value = Number(formData.get("value") || 0);
   const feeVariantInput = String(formData.get("feeVariantId") || "").trim();
@@ -108,6 +110,7 @@ export async function action({request}) {
     update: {
       enabled,
       title,
+      info,
       type,
       value,
       feeVariantId: feeVariantId || null,
@@ -116,6 +119,7 @@ export async function action({request}) {
       shop: session.shop,
       enabled,
       title,
+      info,
       type,
       value,
       feeVariantId: feeVariantId || null,
@@ -146,6 +150,11 @@ export default function Index() {
             name="title"
             label="Fee title"
             value={settings.title}
+          />
+          <s-text-field
+            name="info"
+            label="Information below the title"
+            value={settings.info}
           />
           <s-select
             name="type"

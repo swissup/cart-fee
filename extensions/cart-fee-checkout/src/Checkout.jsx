@@ -15,6 +15,7 @@ function Extension() {
     const enabled = getAttribute('cart_fee_enabled') === 'true';
     const variantId = getAttribute('cart_fee_variant_id');
     const feeType = getAttribute('cart_fee_type');
+    const optedIn = getAttribute('cart_fee_opt_in') === 'true';
 
     if (!enabled || !variantId) {
       return;
@@ -23,6 +24,18 @@ function Extension() {
     const existingFee = shopify.lines.value.find(
       (line) => line.merchandise.id === variantId,
     );
+
+    if (!optedIn) {
+      if (existingFee && shopify.instructions.value.lines.canRemoveCartLine) {
+        shopify.applyCartLinesChange({
+          type: 'removeCartLine',
+          id: existingFee.id,
+          quantity: existingFee.quantity,
+        });
+      }
+
+      return;
+    }
 
     if (feeType !== 'fixed') {
       if (existingFee && shopify.instructions.value.lines.canRemoveCartLine) {

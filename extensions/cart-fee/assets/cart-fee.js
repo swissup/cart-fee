@@ -3,11 +3,9 @@ class CartFee extends HTMLElement {
     this.load();
   }
 
-  async load() {    
+  async load() {
     try {
-      if (this.dataset.cartFeeRendered === 'true' && !this.hidden) {
-        return;
-      }
+      if (this.dataset.cartFeeRendered === 'true' && !this.hidden) return;
 
       const existingFee = Array.from(
         document.querySelectorAll('cart-fee[data-cart-fee-rendered="true"]'),
@@ -24,133 +22,54 @@ class CartFee extends HTMLElement {
       ]);
 
       if (!settingsResponse.ok || !cartResponse.ok) {
-        this.remove();
-        return;
+        throw new Error('Unable to load cart fee settings or cart.');
       }
 
       const settings = await settingsResponse.json();
-      const cart = await cartResponse.json();
-      await this.syncCartAttributes(settings, cart).catch((error) => {
-        console.error('Cart fee settings sync:', error);
-      });
+      let cart = await cartResponse.json();
+      await this.syncCartAttributes(settings, cart);
 
-      const variantId = Number(settings.feeVariantId?.split('/').pop());
-      const feeItem = Number.isSafeInteger(variantId)
-        ? cart.items.find((item) => Number(item.variant_id) === variantId)
-        : null;
-      const feeType = settings.type || this.dataset.type;
-      const feeValue = settings.value ?? this.dataset.value;
-      const calculatedFee = this.calculateFee(cart, feeType, feeValue);
+      this.settings = settings;
+      this.variantId = Number(settings.feeVariantId?.split('/').pop());
+      this.feeType = settings.type || this.dataset.type;
+      this.feeValue = settings.value ?? this.dataset.value;
 
-      if (!settings.enabled) {
+      let feeItem = this.findFeeItem(cart);
+      const hasMerchandise = cart.items.some((item) => item !== feeItem);
+      const optedIn = cart.attributes?.cart_fee_opt_in === 'true';
+
+      if (!settings.enabled || !hasMerchandise) {
         if (feeItem) {
-          const removalResponse = await fetch('/cart/change.js', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({id: feeItem.key, quantity: 0}),
-          });
-
-          if (!removalResponse.ok) {
-            throw new Error('Unable to remove the disabled cart fee.');
-          }
-
-          window.location.reload();
-          return;
+          await this.removeFeeItem(feeItem);
         }
-
         this.remove();
         return;
       }
 
-      if (cart.item_count === 0) {
-        this.remove();
-        return;
+      if (feeItem && (!optedIn || this.feeType !== 'fixed')) {
+        await this.removeFeeItem(feeItem);
+        cart = await this.fetchCart();
+        feeItem = null;
+      } else if (optedIn && this.feeType === 'fixed' && Number.isSafeInteger(this.variantId) && !feeItem) {
+        await this.addFeeItem(this.variantId);
+        cart = await this.fetchCart();
+        feeItem = this.findFeeItem(cart);
       }
 
-      if (feeType !== 'fixed' && feeItem) {
-        const removalResponse = await fetch('/cart/change.js', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({id: feeItem.key, quantity: 0}),
-        });
+      const totalValue = this.findTotalValue(document);
+      const totalRow = this.findTotalRow(totalValue);
+      this.totalValueElement = totalValue;
+      if (totalRow) totalRow.insertAdjacentElement('beforebegin', this);
 
-        if (!removalResponse.ok) {
-          throw new Error('Unable to remove the inactive cart fee line.');
-        }
+      this.totalValueElement = totalValue;
+      this.querySelector('.cart-fee__title').textContent = settings.title || this.dataset.title || 'Cart fee';
+      this.querySelector('.cart-fee__info').textContent = settings.info || '';
 
-        window.location.reload();
-        return;
-      }
+      const checkbox = this.querySelector('.cart-fee__checkbox');
+      checkbox.checked = cart.attributes?.cart_fee_opt_in === 'true';
+      checkbox.addEventListener('change', () => this.setOptIn(checkbox));
 
-      if (feeType === 'fixed' && Number.isSafeInteger(variantId) && !feeItem) {
-        const addResponse = await fetch('/cart/add.js', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({
-            items: [{
-              id: variantId,
-              quantity: 1,
-              properties: {_cart_fee: 'true'},
-            }],
-          }),
-        });
-
-        if (!addResponse.ok) {
-          throw new Error('Unable to add the cart fee to the cart.');
-        }
-
-        window.location.reload();
-        return;
-      }
-
-      const summary = [
-        '#main-cart-footer .cart__blocks',
-        '.cart-page__summary',
-        '.cart-page__footer',
-        '.cart__blocks',
-        '.cart__footer',
-        '[data-cart-summary]',
-      ]
-        .map((selector) => document.querySelector(selector))
-        .find(Boolean);
-
-      if (summary) {
-        const totalRow = summary.querySelector(
-          '.totals, .cart-totals, .cart-page__totals, .cart__subtotal, [data-cart-total]',
-        );
-
-        if (totalRow) {
-          totalRow.insertAdjacentElement('beforebegin', this);
-        } else {
-          summary.prepend(this);
-        }
-      }
-
-      const fee = feeItem ? Number(feeItem.final_line_price) : calculatedFee;
-
-      if (fee <= 0) {
-        this.remove();
-        return;
-      }
-
-      const titleElement = this.querySelector('.cart-fee__title');
-      const valueElement = this.querySelector('.cart-fee__value');
-
-      titleElement.textContent = settings.title || this.dataset.title;
-      valueElement.textContent = this.formatMoney(
-        fee,
-        cart.currency,
-      );
-
-      const totalValue = this.findTotalValue(summary);
-
-      if (totalValue) {
-        totalValue.textContent = this.formatMoney(
-          cart.total_price + (feeItem ? 0 : fee),
-          cart.currency,
-        );
-      }
-
+      this.renderCart(cart);
       this.hidden = false;
       this.dataset.cartFeeRendered = 'true';
     } catch (error) {
@@ -166,14 +85,14 @@ class CartFee extends HTMLElement {
       cart_fee_type: settings.type || '',
       cart_fee_value: settings.value == null ? '' : String(settings.value),
       cart_fee_title: settings.title || '',
+      cart_fee_info: settings.info || '',
+      cart_fee_opt_in: cart.attributes?.cart_fee_opt_in === 'true' ? 'true' : 'false',
     };
     const hasChanges = Object.entries(attributes).some(
       ([key, value]) => cart.attributes?.[key] !== value,
     );
 
-    if (!hasChanges) {
-      return;
-    }
+    if (!hasChanges) return;
 
     const response = await fetch('/cart/update.js', {
       method: 'POST',
@@ -181,57 +100,152 @@ class CartFee extends HTMLElement {
       body: JSON.stringify({attributes}),
     });
 
-    if (!response.ok) {
-      throw new Error('Unable to sync cart fee settings.');
+    if (!response.ok) throw new Error('Unable to sync cart fee settings.');
+  }
+
+  async setOptIn(checkbox) {
+    const previousValue = !checkbox.checked;
+    checkbox.disabled = true;
+
+    try {
+      const optedIn = checkbox.checked;
+      const attributeResponse = await fetch('/cart/update.js', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({attributes: {cart_fee_opt_in: String(optedIn)}}),
+      });
+
+      if (!attributeResponse.ok) throw new Error('Unable to save the cart fee selection.');
+
+      let cart = await this.fetchCart();
+      let feeItem = this.findFeeItem(cart);
+
+      if (optedIn && this.feeType === 'fixed' && Number.isSafeInteger(this.variantId) && !feeItem) {
+        await this.addFeeItem(this.variantId);
+        cart = await this.fetchCart();
+        feeItem = this.findFeeItem(cart);
+      } else if (!optedIn && feeItem) {
+        await this.removeFeeItem(feeItem);
+        cart = await this.fetchCart();
+      }
+
+      this.renderCart(cart);
+      checkbox.checked = optedIn;
+      checkbox.disabled = false;
+    } catch (error) {
+      console.error('Cart fee selection:', error);
+      checkbox.checked = previousValue;
+      checkbox.disabled = false;
+      await fetch('/cart/update.js', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({attributes: {cart_fee_opt_in: String(previousValue)}}),
+      }).catch(() => {});
     }
   }
 
-  calculateFee(cart, type, configuredValue) {
+  renderCart(cart) {
+    const optedIn = cart.attributes?.cart_fee_opt_in === 'true';
+    const feeItem = this.findFeeItem(cart);
+    const baseTotal = cart.total_price - (feeItem ? Number(feeItem.final_line_price) : 0);
+    const calculatedFee = this.calculateFee(baseTotal, this.feeType, this.feeValue);
+    const fee = feeItem && optedIn && this.feeType === 'fixed'
+      ? Number(feeItem.final_line_price)
+      : calculatedFee;
+    const total = feeItem && optedIn && this.feeType === 'fixed'
+      ? cart.total_price
+      : baseTotal + (optedIn ? calculatedFee : 0);
+
+    this.querySelector('.cart-fee__value').textContent = this.formatMoney(fee, cart.currency);
+    this.querySelector('.cart-fee__checkbox').checked = optedIn;
+
+    if (this.totalValueElement) {
+      this.totalValueElement.textContent = this.formatMoney(total, cart.currency);
+    }
+  }
+
+  async fetchCart() {
+    const response = await fetch('/cart.js');
+    if (!response.ok) throw new Error('Unable to refresh the cart.');
+    return response.json();
+  }
+
+  findFeeItem(cart) {
+    if (!Number.isSafeInteger(this.variantId)) return null;
+    return cart.items.find((item) => Number(item.variant_id) === this.variantId) || null;
+  }
+
+  async addFeeItem(variantId) {
+    const response = await fetch('/cart/add.js', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        items: [{id: variantId, quantity: 1, properties: {_cart_fee: 'true'}}],
+      }),
+    });
+
+    if (!response.ok) throw new Error('Unable to add the cart fee to the cart.');
+  }
+
+  async removeFeeItem(feeItem) {
+    const response = await fetch('/cart/change.js', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({id: feeItem.key, quantity: 0}),
+    });
+
+    if (!response.ok) throw new Error('Unable to remove the cart fee from the cart.');
+  }
+
+  calculateFee(cartTotal, type, configuredValue) {
     const value = Number(configuredValue);
-
-    if (!Number.isFinite(value) || value <= 0) {
-      return 0;
-    }
-
-    if (type === 'fixed') {
-      return Math.round(value * 100);
-    }
-
-    if (type === 'percentage') {
-      return Math.round(cart.total_price * value / 100);
-    }
-
+    if (!Number.isFinite(value) || value <= 0) return 0;
+    if (type === 'fixed') return Math.round(value * 100);
+    if (type === 'percentage') return Math.round(cartTotal * value / 100);
     return 0;
   }
 
-  findTotalValue(summary) {
-    if (!summary) {
-      return null;
-    }
+  findTotalValue(root) {
+    if (!root) return null;
 
-    const totalValue = summary.querySelector(
+    const knownValue = root.querySelector(
       '.totals__total-value, .cart-total__value, .cart-page__total-value, .cart-summary__total-value, [data-cart-total-value]',
     );
+    if (knownValue) return knownValue;
 
-    if (totalValue) {
-      return totalValue;
-    }
-
-    const totalRows = Array.from(summary.querySelectorAll('*'))
+    const totalRows = Array.from(root.querySelectorAll('*'))
       .filter((element) => {
         const text = element.textContent.trim();
-        return /\btotal\b/i.test(text) && !/\bsubtotal\b/i.test(text);
+        const isCartItem = element.closest?.(
+          '.cart-item, .cart-item__totals, .cart-items, .cart__items, [data-cart-items]',
+        );
+        return /\btotal\b/i.test(text) && !/\bsubtotal\b/i.test(text) && !isCartItem;
       })
       .sort((left, right) => left.textContent.length - right.textContent.length);
 
-    for (const totalRow of totalRows) {
-      const amount = Array.from(totalRow.querySelectorAll('*'))
+    for (const row of totalRows) {
+      const amount = Array.from(row.querySelectorAll('*'))
         .reverse()
         .find((element) => element.children.length === 0 && /\d/.test(element.textContent));
 
-      if (amount) {
-        return amount;
-      }
+      if (amount) return amount;
+    }
+
+    return null;
+  }
+
+  findTotalRow(totalValue) {
+    let candidate = totalValue?.parentElement;
+
+    while (candidate && candidate !== document.body) {
+      const text = candidate.textContent.trim();
+      const isTotalRow = /\btotal\b/i.test(text) && !/\bsubtotal\b/i.test(text);
+      const isCartItem = candidate.closest?.(
+        '.cart-totals__item, .cart-item__totals, .cart-items, .cart__items, [data-cart-items]',
+      );
+
+      if (isTotalRow && !isCartItem) return candidate;
+      candidate = candidate.parentElement;
     }
 
     return null;

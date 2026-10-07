@@ -32,6 +32,7 @@ model CartFeeSettings {
   shop      String   @unique
   enabled   Boolean  @default(false)
   title     String   @default("Handling fee")
+  info      String   @default("")
   type      String   @default("percentage")
   value     Decimal  @default(0)
   feeVariantId String?

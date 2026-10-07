@@ -2,11 +2,17 @@
 <cart-fee
   class="cart-fee"
   data-cart-fee
-  {{ block.shopify_attributes }}  
+  {{ block.shopify_attributes }}
   style="--cart-fee-text-foreground: {{ block.settings.text_foreground }}; --cart-fee-button-background: {{ block.settings.button_background }};{% if block.settings.bold_text %} --cart-fee-bold-text: bold;{% else %} --cart-fee-bold-text: normal;{% endif %}"
 >
-  <span class="cart-fee__title" style="color: var(--cart-fee-text-foreground);font-weight: var(--cart-fee-bold-text);"></span>
-  <span class="cart-fee__value" style="color: var(--cart-fee-text-foreground); display: inline-block; padding: 0.25rem 0.5rem;font-weight: var(--cart-fee-bold-text);"></span>
+  <label class="cart-fee__consent">
+    <input class="cart-fee__checkbox" type="checkbox">
+    <span class="cart-fee__copy">
+      <span class="cart-fee__title" style="color: var(--cart-fee-text-foreground); font-weight: var(--cart-fee-bold-text);">Cart fee</span>
+      <span class="cart-fee__info" style="color: var(--cart-fee-text-foreground);"></span>
+    </span>
+  </label>
+  <span class="cart-fee__value" style="color: var(--cart-fee-text-foreground); display: inline-block; padding: 0.25rem 0.5rem; font-weight: var(--cart-fee-bold-text);"></span>
 </cart-fee>
 
 <script src="{{ 'cart-fee.js' | asset_url }}" defer></script>
