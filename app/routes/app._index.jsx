@@ -320,20 +320,26 @@ export default function Index() {
             onChange={handleChange}
           />
 
-          <s-select
+          <label htmlFor="fee-type">Fee type</label>
+          <select
+            id="fee-type"
             name="type"
-            label="Fee type"
             value={formValues.type}
             onChange={handleChange}
+            style={{
+              width: "100%",
+              minHeight: "40px",
+              padding: "8px 12px",
+              border: "1px solid #8c9196",
+              borderRadius: "4px",
+              backgroundColor: "#fff",
+              color: "#202223",
+              font: "inherit",
+            }}
           >
-            <s-option value="percentage">
-              Percentage
-            </s-option>
-
-            <s-option value="fixed">
-              Fixed amount
-            </s-option>
-          </s-select>
+            <option value="percentage">Percentage</option>
+            <option value="fixed">Fixed amount</option>
+          </select>
 
           <s-number-field
             name="value"

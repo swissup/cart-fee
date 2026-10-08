@@ -1,3 +1,11 @@
+let feeCartMutationQueue = Promise.resolve();
+
+function queueFeeCartMutation(operation) {
+  const result = feeCartMutationQueue.then(operation, operation);
+  feeCartMutationQueue = result.catch(() => {});
+  return result;
+}
+
 class CartFee extends HTMLElement {
   connectedCallback() {
     this.load();
@@ -34,25 +42,26 @@ class CartFee extends HTMLElement {
       this.feeType = settings.type || this.dataset.type;
       this.feeValue = settings.value ?? this.dataset.value;
 
-      let feeItem = this.findFeeItem(cart);
-      const hasMerchandise = cart.items.some((item) => item !== feeItem);
+      let feeItem = this.findFeeItem(cart);      
+      // if (feeItem) {
+      //   this.hideFeeItem(feeItem);
+      // }
+      const hasMerchandise = cart.items.some((item) => item !== feeItem);      
       const optedIn = cart.attributes?.cart_fee_opt_in === 'true';
 
       if (!settings.enabled || !hasMerchandise) {
         if (feeItem) {
-          await this.removeFeeItem(feeItem);
+          await this.removeFeeItem();
         }
         this.remove();
         return;
       }
 
       if (feeItem && (!optedIn || this.feeType !== 'fixed')) {
-        await this.removeFeeItem(feeItem);
-        cart = await this.fetchCart();
+        cart = await this.removeFeeItem();
         feeItem = null;
-      } else if (optedIn && this.feeType === 'fixed' && Number.isSafeInteger(this.variantId) && !feeItem) {
-        await this.addFeeItem(this.variantId);
-        cart = await this.fetchCart();
+      } else if (optedIn && this.feeType === 'fixed' && Number.isSafeInteger(this.variantId)) {
+        cart = await this.ensureSingleFeeItem();
         feeItem = this.findFeeItem(cart);
       }
 
@@ -120,13 +129,11 @@ class CartFee extends HTMLElement {
       let cart = await this.fetchCart();
       let feeItem = this.findFeeItem(cart);
 
-      if (optedIn && this.feeType === 'fixed' && Number.isSafeInteger(this.variantId) && !feeItem) {
-        await this.addFeeItem(this.variantId);
-        cart = await this.fetchCart();
+      if (optedIn && this.feeType === 'fixed' && Number.isSafeInteger(this.variantId)) {
+        cart = await this.ensureSingleFeeItem();
         feeItem = this.findFeeItem(cart);
       } else if (!optedIn && feeItem) {
-        await this.removeFeeItem(feeItem);
-        cart = await this.fetchCart();
+        cart = await this.removeFeeItem();
       }
 
       this.renderCart(cart);
@@ -175,7 +182,31 @@ class CartFee extends HTMLElement {
     return cart.items.find((item) => Number(item.variant_id) === this.variantId) || null;
   }
 
-  async addFeeItem(variantId) {
+  hideFeeItem(feeItem) {
+    if (!feeItem) return;
+
+    const selectors = [
+      `[data-key="${CSS.escape(feeItem.key)}"]`,
+      `[data-line-key="${CSS.escape(feeItem.key)}"]`,
+      `[data-variant-id="${feeItem.variant_id}"]`,
+    ];
+
+    const element = document.querySelector(
+      selectors.join(', '),
+    );
+
+    if (!element) {
+      console.warn(
+        'Cart fee line element not found:',
+        feeItem,
+      );
+      return;
+    }
+
+    element.classList.add('hidden');
+  }
+
+  async addFeeItem(variantId) {    
     const response = await fetch('/cart/add.js', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -187,14 +218,53 @@ class CartFee extends HTMLElement {
     if (!response.ok) throw new Error('Unable to add the cart fee to the cart.');
   }
 
-  async removeFeeItem(feeItem) {
+  async ensureSingleFeeItem() {
+    return queueFeeCartMutation(async () => {
+      let cart = await this.fetchCart();
+
+      if (cart.attributes?.cart_fee_opt_in !== 'true') return cart;
+
+      let feeItem = this.findFeeItem(cart);
+      if (!feeItem) {
+        await this.addFeeItem(this.variantId);
+        cart = await this.fetchCart();
+        feeItem = this.findFeeItem(cart);
+      }
+
+      if (feeItem) {
+        await this.setFeeItemQuantity(feeItem, 1);
+        cart = await this.fetchCart();
+      }
+
+      return cart;
+    });
+  }
+
+  async setFeeItemQuantity(feeItem, quantity) {
     const response = await fetch('/cart/change.js', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({id: feeItem.key, quantity: 0}),
+      body: JSON.stringify({id: feeItem.key, quantity}),
     });
 
-    if (!response.ok) throw new Error('Unable to remove the cart fee from the cart.');
+    if (!response.ok) throw new Error('Unable to set the cart fee quantity.');
+  }
+
+  async removeFeeItem() {
+    return queueFeeCartMutation(async () => {
+      const cart = await this.fetchCart();
+      const currentFeeItem = this.findFeeItem(cart);
+      if (!currentFeeItem) return cart;
+
+      const response = await fetch('/cart/change.js', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({id: currentFeeItem.key, quantity: 0}),
+      });
+
+      if (!response.ok) throw new Error('Unable to remove the cart fee from the cart.');
+      return response.json();
+    });
   }
 
   calculateFee(cartTotal, type, configuredValue) {
@@ -244,8 +314,7 @@ class CartFee extends HTMLElement {
         '.cart-totals__item, .cart-item__totals, .cart-items, .cart__items, [data-cart-items]',
       );
 
-      if (isTotalRow && !isCartItem) return candidate;
-      console.log(candidate, isTotalRow, isCartItem);
+      if (isTotalRow && !isCartItem) return candidate;      
       candidate = candidate.parentElement;
     }
 
