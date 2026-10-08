@@ -1,11 +1,12 @@
-import {Form, useActionData, useLoaderData} from "react-router";
-import {useState} from "react";
-import {authenticate} from "../shopify.server";
-import {useAppBridge} from "@shopify/app-bridge-react";
+import { Form, useActionData, useLoaderData } from "react-router";
+import { useEffect, useState } from "react";
+
+import { authenticate } from "../shopify.server";
+import { useAppBridge } from "@shopify/app-bridge-react";
 import prisma from "../db.server";
 
-export async function loader({request}) {
-  const {admin, session} = await authenticate.admin(request);
+export async function loader({ request }) {
+  const { admin, session } = await authenticate.admin(request);
 
   let settings = await prisma.cartFeeSettings.findUnique({
     where: {
@@ -45,7 +46,6 @@ export async function loader({request}) {
     );
 
     const data = await response.json();
-
     feeVariant = data.data?.productVariant || null;
   }
 
@@ -56,18 +56,15 @@ export async function loader({request}) {
       info: settings.info,
       type: settings.type,
       value: settings.value.toString(),
-
       feeVariantId: settings.feeVariantId || "",
-
       productTitle: feeVariant?.product?.title || "",
       feeVariantTitle: feeVariant?.title || "",
     },
   };
 }
 
-export async function action({request}) {
-  const {admin, session} = await authenticate.admin(request);
-
+export async function action({ request }) {
+  const { admin, session } = await authenticate.admin(request);
   const formData = await request.formData();
 
   const enabled = formData.get("enabled") === "on";
@@ -102,9 +99,7 @@ export async function action({request}) {
     };
   }
 
-  /*
-   * Validate the ProductVariant GID before sending it to Shopify.
-   */
+  // Validate the ProductVariant GID before sending it to Shopify.
   if (
     feeVariantId &&
     !/^gid:\/\/shopify\/ProductVariant\/\d+$/.test(feeVariantId)
@@ -134,7 +129,6 @@ export async function action({request}) {
     );
 
     const variantData = await variantResponse.json();
-
     const variant = variantData.data?.productVariant;
 
     if (!variant) {
@@ -192,7 +186,7 @@ export async function action({request}) {
     if (priceErrors.length > 0) {
       return {
         error: priceErrors
-          .map(({message}) => message)
+          .map(({ message }) => message)
           .join(" "),
       };
     }
@@ -202,7 +196,6 @@ export async function action({request}) {
     where: {
       shop: session.shop,
     },
-
     update: {
       enabled,
       title,
@@ -211,7 +204,6 @@ export async function action({request}) {
       value,
       feeVariantId: feeVariantId || null,
     },
-
     create: {
       shop: session.shop,
       enabled,
@@ -225,20 +217,20 @@ export async function action({request}) {
 
   return {
     success: true,
+    savedAt: Date.now(),
   };
 }
 
 export default function Index() {
-  const {settings} = useLoaderData();
+  const { settings } = useLoaderData();
   const actionData = useActionData();
-
   const shopify = useAppBridge();
 
   const [formValues, setFormValues] = useState(settings);
+  const [showSuccess, setShowSuccess] = useState(false);
 
-  const isDirty =
-    JSON.stringify(formValues) !== JSON.stringify(settings);
-
+  const isDirty = JSON.stringify(formValues) !== JSON.stringify(settings);
+  
   const handleChange = (event) => {
     const field = event.currentTarget;
 
@@ -247,7 +239,7 @@ export default function Index() {
     }
 
     const value =
-      field.type === "checkbox"
+      field.name === "enabled"
         ? field.checked
         : field.value;
 
@@ -272,16 +264,25 @@ export default function Index() {
 
     setFormValues((current) => ({
       ...current,
-
       feeVariantId: variant.id || "",
-
-      productTitle:
-        variant.product?.title || "",
-
-      feeVariantTitle:
-        variant.title || "",
+      productTitle: variant.product?.title || "",
+      feeVariantTitle: variant.title || "",
     }));
   };
+
+  useEffect(() => {
+    if (!actionData?.success) {
+      return;
+    }
+
+    setShowSuccess(true);
+
+    const timer = setTimeout(() => {
+      setShowSuccess(false);
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [actionData?.savedAt]);
 
   return (
     <s-page heading="Cart Fee">
@@ -292,12 +293,21 @@ export default function Index() {
           </s-banner>
         ) : null}
 
-        {actionData?.success ? (
-          <s-banner tone="success">
+        {showSuccess ? (
+          <s-banner
+            tone="success"
+            style={{
+              position: "absolute", 
+              top: "0",
+              left: "0",
+              right: "0",
+              zIndex: 1000              
+            }}
+          >
             Settings saved.
           </s-banner>
         ) : null}
-
+        
         <s-section heading="Fee settings">
           <s-checkbox
             name="enabled"
@@ -309,7 +319,8 @@ export default function Index() {
           <s-text-field
             name="title"
             label="Fee title"
-            value={formValues.title}
+            value={formValues.title} 
+            disabled={!formValues.enabled}           
             onChange={handleChange}
           />
 
@@ -317,15 +328,21 @@ export default function Index() {
             name="info"
             label="Information below the title"
             value={formValues.info}
+            disabled={!formValues.enabled}
             onChange={handleChange}
           />
 
-          <label htmlFor="fee-type">Fee type</label>
+          <label htmlFor="fee-type">
+            Fee type
+          </label>
+
           <select
             id="fee-type"
             name="type"
             value={formValues.type}
             onChange={handleChange}
+            disabled={!formValues.enabled}
+            className="fee-type-select"
             style={{
               width: "100%",
               minHeight: "40px",
@@ -337,8 +354,13 @@ export default function Index() {
               font: "inherit",
             }}
           >
-            <option value="percentage">Percentage</option>
-            <option value="fixed">Fixed amount</option>
+            <option value="percentage">
+              Percentage
+            </option>
+
+            <option value="fixed">
+              Fixed amount
+            </option>
           </select>
 
           <s-number-field
@@ -348,6 +370,7 @@ export default function Index() {
             min="0"
             step="0.01"
             onChange={handleChange}
+            disabled={!formValues.enabled}
           />
 
           <input
@@ -359,6 +382,7 @@ export default function Index() {
           <s-button
             type="button"
             onClick={handleSelectVariant}
+            disabled={!formValues.enabled}
           >
             {formValues.feeVariantTitle
               ? "Change fee product variant"
