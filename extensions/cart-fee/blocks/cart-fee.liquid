@@ -4,6 +4,7 @@
   data-cart-fee
   {{ block.shopify_attributes }}
   style="--cart-fee-text-foreground: {{ block.settings.text_foreground }}; --cart-fee-button-background: {{ block.settings.button_background }};{% if block.settings.bold_text %} --cart-fee-bold-text: bold;{% else %} --cart-fee-bold-text: normal;{% endif %}"
+  hidden
 >
   <label class="cart-fee__consent">
     <input class="cart-fee__checkbox" type="checkbox">

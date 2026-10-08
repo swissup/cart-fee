@@ -245,6 +245,7 @@ class CartFee extends HTMLElement {
       );
 
       if (isTotalRow && !isCartItem) return candidate;
+      console.log(candidate, isTotalRow, isCartItem);
       candidate = candidate.parentElement;
     }
 
