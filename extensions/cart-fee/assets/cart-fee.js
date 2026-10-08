@@ -43,9 +43,9 @@ class CartFee extends HTMLElement {
       this.feeValue = settings.value ?? this.dataset.value;
 
       let feeItem = this.findFeeItem(cart);      
-      // if (feeItem) {
-      //   this.hideFeeItem(feeItem);
-      // }
+      if (feeItem) {
+        this.hideFeeItem(feeItem);
+      }
       const hasMerchandise = cart.items.some((item) => item !== feeItem);      
       const optedIn = cart.attributes?.cart_fee_opt_in === 'true';
 
@@ -132,8 +132,11 @@ class CartFee extends HTMLElement {
       if (optedIn && this.feeType === 'fixed' && Number.isSafeInteger(this.variantId)) {
         cart = await this.ensureSingleFeeItem();
         feeItem = this.findFeeItem(cart);
+        this.hideFeeItem(feeItem);
       } else if (!optedIn && feeItem) {
+        this.hideFeeItem(feeItem);
         cart = await this.removeFeeItem();
+        feeItem = null;
       }
 
       this.renderCart(cart);
@@ -179,31 +182,34 @@ class CartFee extends HTMLElement {
 
   findFeeItem(cart) {
     if (!Number.isSafeInteger(this.variantId)) return null;
-    return cart.items.find((item) => Number(item.variant_id) === this.variantId) || null;
+    return cart.items.find((item) => Number(item.variant_id) === this.variantId &&
+        item.properties?._cart_fee === 'true') || null;
   }
 
-  hideFeeItem(feeItem) {
+  async hideFeeItem(feeItem) {
     if (!feeItem) return;
 
-    const selectors = [
-      `[data-key="${CSS.escape(feeItem.key)}"]`,
-      `[data-line-key="${CSS.escape(feeItem.key)}"]`,
-      `[data-variant-id="${feeItem.variant_id}"]`,
-    ];
+    const key = CSS.escape(feeItem.key);
+    const variantId = CSS.escape(String(feeItem.variant_id));
 
     const element = document.querySelector(
-      selectors.join(', '),
+      [
+        `[data-key="${key}"]`,
+        `[data-line-key="${key}"]`,
+        `[data-variant-id="${variantId}"]`,
+      ].join(', '),
     );
 
     if (!element) {
-      console.warn(
-        'Cart fee line element not found:',
-        feeItem,
-      );
+      console.warn('Cart fee line element not found:', feeItem);
       return;
     }
 
-    element.classList.add('hidden');
+    const cartItem = element.closest(
+      '.cart-item, [data-cart-item], [data-line-item], li',
+    ) || element;
+
+    cartItem.classList.add('hidden');
   }
 
   async addFeeItem(variantId) {    
@@ -225,7 +231,7 @@ class CartFee extends HTMLElement {
       if (cart.attributes?.cart_fee_opt_in !== 'true') return cart;
 
       let feeItem = this.findFeeItem(cart);
-      if (!feeItem) {
+      if (!feeItem) {        
         await this.addFeeItem(this.variantId);
         cart = await this.fetchCart();
         feeItem = this.findFeeItem(cart);
