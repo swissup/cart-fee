@@ -68,36 +68,22 @@ export async function action({ request }) {
   const formData = await request.formData();
 
   const enabled = formData.get("enabled") === "on";
-
-  const title = String(
-    formData.get("title") || "Handling fee",
-  );
-
-  const info = String(
-    formData.get("info") || "",
-  ).trim();
-
-  const type = String(
-    formData.get("type") || "",
-  );
-
-  const value = Number(
-    formData.get("value") || 0,
-  );
-
-  const feeVariantId = String(
-    formData.get("feeVariantId") || "",
-  ).trim();
-
-  if (
-    !Number.isFinite(value) ||
-    value < 0 ||
-    !["fixed", "percentage"].includes(type)
-  ) {
-    return {
-      error: "Enter a valid fee type and a non-negative fee value.",
-    };
-  }
+  const title = String(formData.get("title") || "Handling fee").trim();
+  const info = String(formData.get("info") || "").trim();
+  const type = String(formData.get("type") || "");
+  const value = Number(formData.get("value") || 0);  
+  const feeVariantId = String(formData.get("feeVariantId") || "").trim();
+   
+  // if (
+  //   !Number.isFinite(value) ||
+  //   value < 0 ||
+  //   !["fixed", "percentage"].includes(type)
+  // ) {
+    
+  //   return {      
+  //     error: `Enter a valid fee type and a non-negative fee value. ${value} `,
+  //   };
+  // }
 
   // Validate the ProductVariant GID before sending it to Shopify.
   if (
@@ -228,7 +214,7 @@ export default function Index() {
 
   const [formValues, setFormValues] = useState(settings);
   const [showSuccess, setShowSuccess] = useState(false);
-
+  const [isSaving, setIsSaving] = useState(false);
   const isDirty = JSON.stringify(formValues) !== JSON.stringify(settings);
   
   const handleChange = (event) => {
@@ -284,131 +270,160 @@ export default function Index() {
     return () => clearTimeout(timer);
   }, [actionData?.savedAt]);
 
+  useEffect(() => {
+    if (actionData) {
+      setIsSaving(false);
+    }
+  }, [actionData]);
+
   return (
-    <s-page heading="Cart Fee">
-      <Form method="post">
-        {actionData?.error ? (
-          <s-banner tone="critical">
-            {actionData.error}
-          </s-banner>
-        ) : null}
+    
+  <s-page heading="Cart Fee">
+    <Form
+      method="post"
+      onSubmit={() => setIsSaving(true)}
+    >
+      {actionData?.error ? (
+        <s-banner tone="critical">
+          {actionData.error}
+        </s-banner>
+      ) : null}
 
-        {showSuccess ? (
-          <s-banner
-            tone="success"
-            style={{
-              position: "absolute", 
-              top: "0",
-              left: "0",
-              right: "0",
-              zIndex: 1000              
-            }}
-          >
-            Settings saved.
-          </s-banner>
-        ) : null}
-        
-        <s-section heading="Fee settings">
-          <s-checkbox
-            name="enabled"
-            label="Enable cart fee"
-            checked={formValues.enabled}
-            onChange={handleChange}
-          />
+      {showSuccess ? (
+        <s-banner tone="success">
+          Settings saved.
+        </s-banner>
+      ) : null}
 
-          <s-text-field
-            name="title"
-            label="Fee title"
-            value={formValues.title} 
-            disabled={!formValues.enabled}           
-            onChange={handleChange}
-          />
+      <s-section heading="Settings">
+        <s-paragraph>
+          Add extra charges, surcharges, or service add-ons directly to a customer's shopping cart before checkout.
+        </s-paragraph>
 
-          <s-text-field
-            name="info"
-            label="Information below the title"
-            value={formValues.info}
-            disabled={!formValues.enabled}
-            onChange={handleChange}
-          />
+        <s-checkbox
+          name="enabled"
+          label="Enable"
+          checked={formValues.enabled}
+          onChange={handleChange}
+        />
 
-          <label htmlFor="fee-type">
-            Fee type
-          </label>
+        <s-text-field
+          name="title"
+          label="Fee title"
+          value={formValues.title}
+          disabled={!formValues.enabled}
+          onChange={handleChange}
+        />
 
-          <select
-            id="fee-type"
-            name="type"
-            value={formValues.type}
-            onChange={handleChange}
-            disabled={!formValues.enabled}
-            className="fee-type-select"
-            style={{
-              width: "100%",
-              minHeight: "40px",
-              padding: "8px 12px",
-              border: "1px solid #8c9196",
-              borderRadius: "4px",
-              backgroundColor: "#fff",
-              color: "#202223",
-              font: "inherit",
-            }}
-          >
-            <option value="percentage">
-              Percentage
-            </option>
+        <s-text-field
+          name="info"
+          label="Subtitle / Extra info"
+          value={formValues.info}
+          disabled={!formValues.enabled}
+          onChange={handleChange}
+        />
 
-            <option value="fixed">
-              Fixed amount
-            </option>
-          </select>
+        <label htmlFor="fee-type">Fee type</label>
 
-          <s-number-field
-            name="value"
-            label="Fee value"
-            value={formValues.value}
-            min="0"
-            step="0.01"
-            onChange={handleChange}
-            disabled={!formValues.enabled}
-          />
+        <select
+          id="fee-type"
+          name="type"
+          value={formValues.type}
+          onChange={handleChange}
+          disabled={!formValues.enabled}
+          className="fee-type-select"
+          style={{
+            width: "100%",
+            minHeight: "40px",
+            padding: "6px 8px",
+            border: "1px solid #b8b9bb",
+            borderRadius: "6px",
+            backgroundColor: "#fff",
+            color: "#202223",
+            font: "inherit",
+          }}
+        >
+          <option value="percentage">Percentage</option>
+          <option value="fixed">Fixed amount</option>
+        </select>
 
-          <input
-            type="hidden"
-            name="feeVariantId"
-            value={formValues.feeVariantId}
-          />
+        <s-number-field
+          name="value"
+          label="Fee value"
+          value={formValues.value}
+          min="0"
+          step="0.01"
+          onChange={handleChange}
+          disabled={!formValues.enabled}
+        />
 
+        <input
+          type="hidden"
+          name="feeVariantId"
+          value={formValues.feeVariantId}
+        />
+
+        <s-stack direction="inline" gap="base" alignItems="center">
           <s-button
             type="button"
             onClick={handleSelectVariant}
             disabled={!formValues.enabled}
           >
             {formValues.feeVariantTitle
-              ? "Change fee product variant"
-              : "Select fee product variant"}
+              ? "Change product"
+              : "Select product"}
           </s-button>
 
-          {formValues.feeVariantTitle ? (
+          {formValues.feeVariantId ? (
+            <s-button
+              type="button"
+              variant="secondary"
+              icon="delete"
+              onClick={() =>
+                setFormValues((current) => ({
+                  ...current,
+                  feeVariantId: "",
+                  productTitle: "",
+                  feeVariantTitle: "",
+                }))
+              }
+            >
+              Remove variant
+            </s-button>
+          ) : null}
+        </s-stack>
+
+        <s-box paddingBlockStart="200">
+          {formValues.feeVariantId ? (
             <s-text>
-              {formValues.productTitle}:{" "}
-              {formValues.feeVariantTitle}
+              {formValues.feeVariantTitle &&
+              formValues.feeVariantTitle !== "Default Title"
+                ? `Variant: ${formValues.feeVariantTitle}`
+                : `Product: ${formValues.productTitle}`}
             </s-text>
           ) : (
-            <s-text>
-              Select the product variant used for the cart fee.
+            <s-text tone="critical">
+              Select the product variant used for the cart fee. (Required)
             </s-text>
           )}
+        </s-box>
 
+        <s-box paddingBlockStart="400">
           <s-button
             type="submit"
             variant="primary"
-            disabled={!isDirty}
+            icon="save"
+            disabled={
+              !isDirty ||
+              (formValues.enabled && !formValues.feeVariantId)
+            }
+            loading={isSaving}
           >
             Save settings
           </s-button>
-        </s-section>
-      </Form>
-    </s-page>
+        </s-box>
+      </s-section>
+    </Form>
+  </s-page>
   );
 }
