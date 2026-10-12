@@ -75,8 +75,15 @@ class CartFee extends HTMLElement {
       this.querySelector('.cart-fee__info').textContent = settings.info || '';
 
       const checkbox = this.querySelector('.cart-fee__checkbox');
-      checkbox.checked = cart.attributes?.cart_fee_opt_in === 'true';
-      checkbox.addEventListener('change', () => this.setOptIn(checkbox));
+      if(this.dataset.cartFeeRequired === 'true') {
+        this.setOptIn(true);
+      } else {
+        checkbox.checked = cart.attributes?.cart_fee_opt_in === 'true';
+        checkbox.addEventListener('change', () => {
+          document.querySelector('.cart__checkout-button').disabled = true;
+          this.setOptIn(checkbox);
+        });
+      }      
 
       this.renderCart(cart);
       this.hidden = false;
@@ -142,6 +149,7 @@ class CartFee extends HTMLElement {
       this.renderCart(cart);
       checkbox.checked = optedIn;
       checkbox.disabled = false;
+      document.querySelector('.cart__checkout-button').disabled = false;
     } catch (error) {
       console.error('Cart fee selection:', error);
       checkbox.checked = previousValue;
@@ -167,7 +175,9 @@ class CartFee extends HTMLElement {
       : baseTotal + (optedIn ? calculatedFee : 0);
 
     this.querySelector('.cart-fee__value').textContent = this.formatMoney(fee, cart.currency);
-    this.querySelector('.cart-fee__checkbox').checked = optedIn;
+    if(this.dataset.cartFeeRequired === 'false') {
+      this.querySelector('.cart-fee__checkbox').checked = optedIn;
+    } 
 
     if (this.totalValueElement) {
       this.totalValueElement.textContent = this.formatMoney(total, cart.currency);

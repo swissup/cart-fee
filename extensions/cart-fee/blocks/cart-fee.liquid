@@ -1,21 +1,33 @@
 {% if request.page_type == 'cart' %}
+{% liquid 
+  assign tag = 'label'
+  if block.settings.is_required
+    assign tag = 'div'
+  endif
+%}
 <cart-fee
-  class="flex cart-fee"
+  class="cart-fee"
   data-cart-fee
+  data-cart-fee-required="{{ block.settings.is_required }}"
   {{ block.shopify_attributes }}
   style="--cart-fee-text-foreground: {{ block.settings.text_foreground }}; --cart-fee-button-background: {{ block.settings.button_background }};{% if block.settings.bold_text %} --cart-fee-bold-text: bold;{% else %} --cart-fee-bold-text: normal;{% endif %}"
   hidden
 >
-  <label class="cart-fee__consent">
-    <input class="cart-fee__checkbox" type="checkbox">
-    <span class="cart-fee__copy">
-      <span class="cart-fee__title" style="color: var(--cart-fee-text-foreground); font-weight: var(--cart-fee-bold-text);">Cart fee</span>
-      <span class="cart-fee__info" style="color: var(--cart-fee-text-foreground);"></span>
-    </span>
-  </label>
-  <span class="cart-fee__value" style="color: var(--cart-fee-text-foreground); display: inline-block; padding: 0.25rem 0.5rem; font-weight: var(--cart-fee-bold-text);"></span>
+  <div class="cart-fee__wrapper">
+    <{{ tag }} class="cart-fee__consent">
+      {% unless block.settings.is_required -%}
+      <input class="cart-fee__checkbox" type="checkbox">
+      {%- endunless %}
+      <span class="cart-fee__copy">
+        <span class="cart-fee__title">Cart fee</span>
+        <span class="cart-fee__value"></span>    
+      </span>
+    </{{ tag }}>
+    <span class="cart-fee__info"></span> 
+  </div>
 </cart-fee>
 
+{{ 'cart-fee.css' | asset_url | stylesheet_tag }}
 <script src="{{ 'cart-fee.js' | asset_url }}" defer></script>
 {% endif %}
 
@@ -23,7 +35,13 @@
 {
   "name": "Cart fee",
   "target": "section",
-  "settings": [    
+  "settings": [
+    {
+      "type": "checkbox",
+      "id":"is_required",
+      "label": "Use as Required field",
+      "default": false
+    },    
     {
       "type": "color",
       "id": "text_foreground",
