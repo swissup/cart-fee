@@ -1,10 +1,10 @@
 {% if request.page_type == 'cart' %}
-{% liquid 
+{%- liquid 
   assign tag = 'label'
   if block.settings.is_required
     assign tag = 'div'
   endif
-%}
+-%}
 <cart-fee
   class="cart-fee"
   data-cart-fee
@@ -19,7 +19,7 @@
       <input class="cart-fee__checkbox" type="checkbox">
       {%- endunless %}
       <span class="cart-fee__copy">
-        <span class="cart-fee__title">Cart fee</span>
+        <span class="cart-fee__title"></span>
         <span class="cart-fee__value"></span>    
       </span>
     </{{ tag }}>

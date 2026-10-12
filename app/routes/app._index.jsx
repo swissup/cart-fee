@@ -247,11 +247,17 @@ export default function Index() {
     }
 
     const variant = selected[0];
+    const variantSuffix = ` - ${variant.title}`;
+    const productTitle = variant.product?.title || (
+      variant.displayName?.endsWith(variantSuffix)
+        ? variant.displayName.slice(0, -variantSuffix.length)
+        : variant.displayName || ""
+    );
 
     setFormValues((current) => ({
       ...current,
       feeVariantId: variant.id || "",
-      productTitle: variant.product?.title || "",
+      productTitle,
       feeVariantTitle: variant.title || "",
     }));
   };
@@ -343,7 +349,7 @@ export default function Index() {
             font: "inherit",
           }}
         >
-          <option value="percentage">Percentage</option>
+          {/* <option value="percentage">Percentage</option> */}
           <option value="fixed">Fixed amount</option>
         </select>
 

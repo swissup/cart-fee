@@ -15,15 +15,6 @@ class CartFee extends HTMLElement {
     try {
       if (this.dataset.cartFeeRendered === 'true' && !this.hidden) return;
 
-      const existingFee = Array.from(
-        document.querySelectorAll('cart-fee[data-cart-fee-rendered="true"]'),
-      ).find((feeElement) => feeElement !== this && !feeElement.hidden);
-
-      if (existingFee) {
-        this.remove();
-        return;
-      }
-
       const [settingsResponse, cartResponse] = await Promise.all([
         fetch('/apps/cart-fee/settings'),
         fetch('/cart.js'),
@@ -56,11 +47,20 @@ class CartFee extends HTMLElement {
         this.remove();
         return;
       }
-
-      if (feeItem && (!optedIn || this.feeType !== 'fixed')) {
-        cart = await this.removeFeeItem();
-        feeItem = null;
-      } else if (optedIn && this.feeType === 'fixed' && Number.isSafeInteger(this.variantId)) {
+      
+      const baseTotal = cart.total_price - (feeItem ? Number(feeItem.final_line_price) : 0);
+      const calculatedFee = this.calculateFee(
+          baseTotal,
+          this.feeType,
+          this.feeValue,
+        );
+        
+      if (this.feeType === 'percentage' && calculatedFee <= 0) {        
+        if (feeItem) {
+          cart = await this.removeFeeItem();
+          feeItem = null;
+        }
+      } else if (optedIn && Number.isSafeInteger(this.variantId)) {
         cart = await this.ensureSingleFeeItem();
         feeItem = this.findFeeItem(cart);
       }
@@ -121,10 +121,12 @@ class CartFee extends HTMLElement {
 
   async setOptIn(checkbox) {
     const previousValue = !checkbox.checked;
-    checkbox.disabled = true;
+    if (checkbox.tagName !== undefined) {
+      checkbox.disabled = true;
+    }
 
     try {
-      const optedIn = checkbox.checked;
+      const optedIn = checkbox.tagName !== undefined ? checkbox.checked : true;
       const attributeResponse = await fetch('/cart/update.js', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -136,24 +138,28 @@ class CartFee extends HTMLElement {
       let cart = await this.fetchCart();
       let feeItem = this.findFeeItem(cart);
 
-      if (optedIn && this.feeType === 'fixed' && Number.isSafeInteger(this.variantId)) {
+      if (optedIn && Number.isSafeInteger(this.variantId)) {
         cart = await this.ensureSingleFeeItem();
         feeItem = this.findFeeItem(cart);
         this.hideFeeItem(feeItem);
       } else if (!optedIn && feeItem) {
-        this.hideFeeItem(feeItem);
         cart = await this.removeFeeItem();
         feeItem = null;
       }
 
       this.renderCart(cart);
-      checkbox.checked = optedIn;
-      checkbox.disabled = false;
+      if (checkbox.tagName !== undefined) {
+        checkbox.checked = optedIn;
+        checkbox.disabled = false;
+      }
       document.querySelector('.cart__checkout-button').disabled = false;
     } catch (error) {
       console.error('Cart fee selection:', error);
-      checkbox.checked = previousValue;
-      checkbox.disabled = false;
+      if (checkbox.tagName !== undefined) {
+        checkbox.checked = previousValue;
+        checkbox.disabled = false;
+      }
+      
       await fetch('/cart/update.js', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -196,7 +202,7 @@ class CartFee extends HTMLElement {
         item.properties?._cart_fee === 'true') || null;
   }
 
-  async hideFeeItem(feeItem) {
+  hideFeeItem(feeItem) {
     if (!feeItem) return;
 
     const key = CSS.escape(feeItem.key);
@@ -219,7 +225,8 @@ class CartFee extends HTMLElement {
       '.cart-item, [data-cart-item], [data-line-item], li',
     ) || element;
 
-    cartItem.classList.add('hidden');
+    cartItem.style.setProperty('display', 'none', 'important');
+    cartItem.setAttribute('aria-hidden', 'true');
   }
 
   async addFeeItem(variantId) {    
@@ -322,7 +329,7 @@ class CartFee extends HTMLElement {
 
   findTotalRow(totalValue) {
     let candidate = totalValue?.parentElement;
-
+    
     while (candidate && candidate !== document.body) {
       const text = candidate.textContent.trim();
       const isTotalRow = /\btotal\b/i.test(text) && !/\bsubtotal\b/i.test(text);
