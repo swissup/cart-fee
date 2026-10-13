@@ -14,17 +14,27 @@ class CartFee extends HTMLElement {
   async load() {
     try {
       if (this.dataset.cartFeeRendered === 'true' && !this.hidden) return;
-
-      const [settingsResponse, cartResponse] = await Promise.all([
-        fetch('/apps/cart-fee/settings'),
+      
+      // save preloaded settings to get them in the cart-fee-loader 
+      const settingsPromise = this.preloadedSettings
+        ? Promise.resolve(this.preloadedSettings)
+        : fetch('/apps/cart-fee/settings').then(async (response) => {
+            if (!response.ok) {
+              throw new Error('Unable to load cart fee settings.');
+            }
+            return response.json();
+          });
+      
+      // get cartResponse
+      const [settings, cartResponse] = await Promise.all([
+        settingsPromise,
         fetch('/cart.js'),
       ]);
 
-      if (!settingsResponse.ok || !cartResponse.ok) {
-        throw new Error('Unable to load cart fee settings or cart.');
+      if (!cartResponse.ok) {
+        throw new Error('Unable to load the cart.');
       }
 
-      const settings = await settingsResponse.json();
       let cart = await cartResponse.json();
       await this.syncCartAttributes(settings, cart);
 

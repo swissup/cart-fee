@@ -8,6 +8,8 @@
 <cart-fee
   class="cart-fee"
   data-cart-fee
+  data-cart-fee-script-url="{{ 'cart-fee.js' | asset_url }}"
+  data-cart-fee-style-url="{{ 'cart-fee.css' | asset_url }}"
   data-cart-fee-required="{{ block.settings.is_required }}"
   {{ block.shopify_attributes }}
   style="--cart-fee-text-foreground: {{ block.settings.text_foreground }}; --cart-fee-button-background: {{ block.settings.button_background }};{% if block.settings.bold_text %} --cart-fee-bold-text: bold;{% else %} --cart-fee-bold-text: normal;{% endif %}"
@@ -27,8 +29,7 @@
   </div>
 </cart-fee>
 
-{{ 'cart-fee.css' | asset_url | stylesheet_tag }}
-<script src="{{ 'cart-fee.js' | asset_url }}" defer></script>
+<script src="{{ 'cart-fee-loader.js' | asset_url }}" defer></script>
 {% endif %}
 
 {% schema %}
