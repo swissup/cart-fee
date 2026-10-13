@@ -301,10 +301,19 @@ export default function Index() {
         </s-banner>
       ) : null}
 
-      <s-section heading="Settings">
-        <s-paragraph>
-          Add extra charges, surcharges, or service add-ons directly to a customer's shopping cart before checkout.
-        </s-paragraph>
+      <s-section>
+        
+        <s-stack paddingBlockEnd="base" alignItems="end">
+          <s-badge tone={formValues.enabled ? "success" : "critical"}>
+            {formValues.enabled ? "Active" : "Inactive"}
+          </s-badge>
+        </s-stack>
+
+        <s-banner heading="Settings" tone="info">
+          <s-paragraph tone="info">
+            Add extra charges, surcharges, or service add-ons directly to a customer's shopping cart before checkout.
+          </s-paragraph>
+        </s-banner>
 
         <s-checkbox
           name="enabled"
@@ -398,21 +407,32 @@ export default function Index() {
             </s-button>
           ) : null}
         </s-stack>
-
-        <s-box paddingBlockStart="200">
+               
+        <s-stack direction="inline" gap="small-400" alignItems="center">
+          <s-clickable interestFor="fee-variant-tooltip">
+            <s-icon type="info" />
+          </s-clickable>
           {formValues.feeVariantId ? (
-            <s-text>
-              {formValues.feeVariantTitle &&
-              formValues.feeVariantTitle !== "Default Title"
-                ? `Variant: ${formValues.feeVariantTitle}`
-                : `Product: ${formValues.productTitle}`}
-            </s-text>
+            <s-box paddingBlockEnd="base">
+              <s-text>
+                {formValues.feeVariantTitle &&
+                formValues.feeVariantTitle !== "Default Title"
+                  ? `Variant: ${formValues.feeVariantTitle}`
+                  : `Product: ${formValues.productTitle}`}
+              </s-text>
+            </s-box>
           ) : (
-            <s-text tone="critical">
-              Select the product variant used for the cart fee. (Required)
-            </s-text>
+            <s-box paddingBlockEnd="base">
+              <s-text tone="critical">
+                Select the product variant used for the cart fee. (Required)
+              </s-text>
+            </s-box>
           )}
-        </s-box>
+        </s-stack>
+
+        <s-tooltip id="fee-variant-tooltip">
+          Create a new product with any name, like "Shipping Protection", with no price. Make sure it's available on the storefront.
+        </s-tooltip>        
 
         <s-box paddingBlockStart="400">
           <s-button
