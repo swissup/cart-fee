@@ -1,7 +1,8 @@
-.cart-fee__wrapper {
-    display: flex;        
-    flex-direction: column;
-    gap: 0;
+.cart-fee__consent {
+    display: flex;
+    flex-direction: row;
+    gap: .5rem;
+    align-items: center;
 }
 
 .cart-fee__copy {
@@ -26,8 +27,4 @@
 .cart-fee__info {
     color: var(--cart-fee-text-foreground);
     font-size: .75rem;    
-}
-
-[data-cart-fee-required="false"] .cart-fee__info {
-    padding-left: 1.5rem;
 }

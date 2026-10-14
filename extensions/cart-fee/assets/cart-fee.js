@@ -75,12 +75,29 @@ class CartFee extends HTMLElement {
         feeItem = this.findFeeItem(cart);
       }
 
-      const totalValue = this.findTotalValue();
-      const totalRow = this.findTotalRow(totalValue);
-      this.totalValueElement = totalValue;
-      if (totalRow) totalRow.insertAdjacentElement('beforebegin', this);
+      const configuredClass = this.dataset.elementClass?.trim();
+      let placementTarget = null;
 
+      if (configuredClass) {
+        const selector = configuredClass.startsWith('.')
+          ? configuredClass
+          : `.${CSS.escape(configuredClass)}`;
+
+        placementTarget = document.querySelector(selector);
+      }
+
+      const totalValue = this.findTotalValue();
       this.totalValueElement = totalValue;
+      
+      if (placementTarget) {
+        placementTarget.insertAdjacentElement('afterend', this);
+      } else {
+        const totalRow = this.findTotalRow(totalValue);
+        if (totalRow) {
+          totalRow.insertAdjacentElement('beforebegin', this);
+        }
+      }
+
       this.querySelector('.cart-fee__title').textContent = settings.title || this.dataset.title || 'Cart fee';
       this.querySelector('.cart-fee__info').textContent = settings.info || '';
 
