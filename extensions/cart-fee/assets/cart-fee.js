@@ -327,8 +327,9 @@ class CartFee extends HTMLElement {
 
   findTotalValue() {
     const knownValue = document.querySelector(
-      '.totals__total-value, .cart-total__value, .cart-page__total-value, .cart-summary__total-value, [data-cart-total-value]',
+      '.cart-totals__value, .totals__total-value, .cart-total__value, .cart-page__total-value, .cart-summary__total-value, [data-cart-total-value]',
     );
+    
     if (knownValue) return knownValue;
 
     const totalRows = Array.from(document.querySelectorAll('*'))
@@ -357,9 +358,9 @@ class CartFee extends HTMLElement {
     
     while (candidate && candidate !== document.body) {
       const text = candidate.textContent.trim();
-      const isTotalRow = /\btotal\b/i.test(text) && !/\bsubtotal\b/i.test(text);
+      const isTotalRow = /\btotal\b/i.test(text) || /\bsubtotal\b/i.test(text);
       const isCartItem = candidate.closest?.(
-        '.cart-summary__inner .cart-totals__item, .cart-summary__inner .cart-item__totals',
+        '.cart-totals__item, .cart-totals__value',
       );
 
       if (isTotalRow && !isCartItem) return candidate;      
