@@ -75,7 +75,7 @@ class CartFee extends HTMLElement {
         feeItem = this.findFeeItem(cart);
       }
 
-      const totalValue = this.findTotalValue(document);
+      const totalValue = this.findTotalValue();
       const totalRow = this.findTotalRow(totalValue);
       this.totalValueElement = totalValue;
       if (totalRow) totalRow.insertAdjacentElement('beforebegin', this);
@@ -308,15 +308,13 @@ class CartFee extends HTMLElement {
     return 0;
   }
 
-  findTotalValue(root) {
-    if (!root) return null;
-
-    const knownValue = root.querySelector(
+  findTotalValue() {
+    const knownValue = document.querySelector(
       '.totals__total-value, .cart-total__value, .cart-page__total-value, .cart-summary__total-value, [data-cart-total-value]',
     );
     if (knownValue) return knownValue;
 
-    const totalRows = Array.from(root.querySelectorAll('*'))
+    const totalRows = Array.from(document.querySelectorAll('*'))
       .filter((element) => {
         const text = element.textContent.trim();
         const isCartItem = element.closest?.(
@@ -344,7 +342,7 @@ class CartFee extends HTMLElement {
       const text = candidate.textContent.trim();
       const isTotalRow = /\btotal\b/i.test(text) && !/\bsubtotal\b/i.test(text);
       const isCartItem = candidate.closest?.(
-        '.cart-totals__item, .cart-item__totals, .cart-items, .cart__items, [data-cart-items]',
+        '.cart-summary__inner .cart-totals__item, .cart-summary__inner .cart-item__totals',
       );
 
       if (isTotalRow && !isCartItem) return candidate;      

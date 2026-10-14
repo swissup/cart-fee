@@ -34,25 +34,39 @@
 
 {% schema %}
 {
-  "name": "Cart fee",
+  "name": "t:cart-fee.name",
   "target": "section",
   "settings": [
     {
+      "type": "header",
+      "content": "t:cart-fee.settings.advanced"
+    },    
+    {
       "type": "checkbox",
       "id":"is_required",
-      "label": "Use as Required field",
+      "label": "t:cart-fee.settings.is_required",
       "default": false
+    },
+    {
+      "type": "text",
+      "id": "element_class",
+      "label": "t:cart-fee.settings.element_class.label",
+      "info": "t:cart-fee.settings.element_class.info"
+    },
+    {
+      "type": "header",
+      "content": "t:cart-fee.settings.appearance"
     },    
     {
       "type": "color",
       "id": "text_foreground",
-      "label": "Text foreground",
+      "label": "t:cart-fee.settings.foreground",
       "default": "#222222"
     },
     {
       "type": "checkbox",
       "id": "bold_text",
-      "label": "Bold text",
+      "label": "t:cart-fee.settings.is_bold",
       "default": false
     }
   ]

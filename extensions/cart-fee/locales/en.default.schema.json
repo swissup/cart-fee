@@ -1,0 +1,16 @@
+{
+  "cart-fee": {
+    "name": "Cart Fee",
+    "settings": {
+      "is_required": "Use as Required field",
+      "foreground": "Text foreground",
+      "is_bold": "Bold text",
+      "appearance": "Appearance",
+      "advanced": "Advanced",
+      "element_class": {
+        "label": "Element class",
+        "info": "Enter class-name of an element to render the fee block before it"
+      }
+    }
+  }
+}
