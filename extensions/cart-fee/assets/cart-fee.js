@@ -106,6 +106,8 @@ class CartFee extends HTMLElement {
       await this.syncCartAttributes(settings, cart);
 
       this.settings = settings;
+      this.required =
+        this.dataset.cartFeeRequired === 'true' || settings.required === true;
       this.variantId = Number(settings.feeVariantId?.split('/').pop());
       this.feeType = settings.type || this.dataset.type;
       this.feeValue = settings.value ?? this.dataset.value;
@@ -169,7 +171,8 @@ class CartFee extends HTMLElement {
       this.querySelector('.cart-fee__info').textContent = settings.info || '';
 
       const checkbox = this.querySelector('.cart-fee__checkbox');
-      if(this.dataset.cartFeeRequired === 'true') {
+      checkbox.hidden = this.required;
+      if (this.required) {
         this.setOptIn(true);
       } else {
         checkbox.checked = cart.attributes?.cart_fee_opt_in === 'true';
@@ -250,7 +253,10 @@ class CartFee extends HTMLElement {
         checkbox.checked = optedIn;
         checkbox.disabled = false;
       }
-      document.querySelector('.cart__checkout-button').disabled = false;
+      const checkoutButton = document.querySelector('.cart__checkout-button');
+      if (checkoutButton) {
+        checkoutButton.disabled = false;
+      }
     } catch (error) {
       console.error('Cart fee selection:', error);
       if (checkbox.tagName !== undefined) {
@@ -279,7 +285,7 @@ class CartFee extends HTMLElement {
       : baseTotal + (optedIn ? calculatedFee : 0);
 
     this.querySelector('.cart-fee__value').textContent = this.formatMoney(fee, cart.currency);
-    if(this.dataset.cartFeeRequired === 'false') {
+    if (!this.required) {
       this.querySelector('.cart-fee__checkbox').checked = optedIn;
     } 
 

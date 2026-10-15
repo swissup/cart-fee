@@ -2,9 +2,9 @@
   "cart-fee": {
     "name": "Cart Fee",
     "settings": {
-      "is_required": "Use as Required field",
       "foreground": "Text foreground",
       "is_bold": "Bold text",
+      "is_required": "Require this fee",
       "appearance": "Appearance",
       "advanced": "Advanced",
       "element_class": {

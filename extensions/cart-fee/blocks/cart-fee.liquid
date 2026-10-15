@@ -1,31 +1,23 @@
 {% if request.page_type == 'cart' %}
-{%- liquid 
-  assign tag = 'label'
-  if block.settings.is_required
-    assign tag = 'div'
-  endif
--%}
 <cart-fee
   class="cart-fee"
   data-cart-fee
+  data-cart-fee-required="{{ block.settings.is_required }}"
   data-cart-fee-script-url="{{ 'cart-fee.js' | asset_url }}"
   data-cart-fee-style-url="{{ 'cart-fee.css' | asset_url }}"
-  data-cart-fee-required="{{ block.settings.is_required }}"
   data-element-class="{{ block.settings.element_class }}"
   {{ block.shopify_attributes }}
   style="--cart-fee-text-foreground: {{ block.settings.text_foreground }}; --cart-fee-button-background: {{ block.settings.button_background }};{% if block.settings.bold_text %} --cart-fee-bold-text: bold;{% else %} --cart-fee-bold-text: normal;{% endif %}"
   hidden
 >
   <div class="cart-fee__wrapper">
-    <{{ tag }} class="cart-fee__consent">
-      {% unless block.settings.is_required -%}
+    <label class="cart-fee__consent">
       <input class="cart-fee__checkbox" type="checkbox">
-      {%- endunless %}
       <span class="cart-fee__copy">
         <span class="cart-fee__title"></span>
         <span class="cart-fee__value"></span>    
       </span>
-    </{{ tag }}>
+    </label>
     <span class="cart-fee__info"></span> 
   </div>
 </cart-fee>
@@ -44,7 +36,7 @@
     },    
     {
       "type": "checkbox",
-      "id":"is_required",
+      "id": "is_required",
       "label": "t:cart-fee.settings.is_required",
       "default": false
     },
