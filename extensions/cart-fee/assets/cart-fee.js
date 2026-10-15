@@ -9,11 +9,78 @@ function queueFeeCartMutation(operation) {
 class CartFee extends HTMLElement {
   connectedCallback() {
     this.load();
+    this.observeCartChanges();
   }
 
-  async load() {
+  observeCartChanges() {
+    const cartItems = document.querySelector(
+      '.cart__items, [data-cart-items], .cart-items'
+    );
+
+    if (!cartItems) {
+      // support themes that render their cart asynchronously.
+      this.cartObserver = new MutationObserver(() => {
+        const container = document.querySelector(
+          '.cart__items, [data-cart-items], .cart-items'
+        );
+
+        if (container && !this.itemsObserver) {
+          this.observeCartItems(container);
+        }
+      });
+
+      this.cartObserver.observe(document.body, {
+        childList: true,
+        subtree: true,
+      });
+
+      return;
+    }
+
+    this.observeCartItems(cartItems);
+  }
+
+  observeCartItems(container) {
+    this.itemsObserver = new MutationObserver((mutations) => {
+      // Ignore mutations caused by the fee component itself.
+      const cartChanged = mutations.some((mutation) => {
+        if (mutation.target.closest?.('cart-fee')) return false;
+
+        return [...mutation.addedNodes, ...mutation.removedNodes].some(
+          (node) =>
+            node.nodeType === Node.ELEMENT_NODE &&
+            !node.matches?.('cart-fee') &&
+            !node.closest?.('cart-fee')
+        );
+      });
+
+      if (cartChanged) {
+        this.scheduleCartRefresh();
+      }
+    });
+
+    this.itemsObserver.observe(container, {
+      childList: true,
+      subtree: true,
+    });
+  }
+
+  scheduleCartRefresh() {
+    clearTimeout(this.refreshTimer);
+
+    this.refreshTimer = setTimeout(async () => {
+      try {
+        await this.load(true);
+      } catch (error) {
+        console.error('Cart fee refresh:', error);
+      }
+    }, 100);
+  }
+
+  async load(force = true) {
+    
     try {
-      if (this.dataset.cartFeeRendered === 'true' && !this.hidden) return;
+      if (!force && this.dataset.cartFeeRendered === 'true' && !this.hidden) return;
       
       // save preloaded settings to get them in the cart-fee-loader 
       const settingsPromise = this.preloadedSettings
@@ -106,10 +173,14 @@ class CartFee extends HTMLElement {
         this.setOptIn(true);
       } else {
         checkbox.checked = cart.attributes?.cart_fee_opt_in === 'true';
-        checkbox.addEventListener('change', () => {
-          document.querySelector('.cart__checkout-button').disabled = true;
+        checkbox.onchange = () => {
+          const checkoutButton = document.querySelector('.cart__checkout-button');
+          if (checkoutButton) {
+            checkoutButton.disabled = true;
+          }
+
           this.setOptIn(checkbox);
-        });
+        };
       }      
 
       this.renderCart(cart);
@@ -375,6 +446,12 @@ class CartFee extends HTMLElement {
       style: 'currency',
       currency,
     }).format(cents / 100);
+  }
+
+  disconnectedCallback() {
+    this.cartObserver?.disconnect();
+    this.itemsObserver?.disconnect();
+    clearTimeout(this.refreshTimer);
   }
 }
 
