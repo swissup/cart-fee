@@ -28,3 +28,7 @@
     color: var(--cart-fee-text-foreground);
     font-size: .75rem;    
 }
+
+.cart-fee__checkbox:is([hidden]) {
+    display: none;;
+}
