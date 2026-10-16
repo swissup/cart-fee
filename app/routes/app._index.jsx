@@ -574,7 +574,7 @@ export default function Index() {
         </s-stack>
 
         <s-tooltip id="fee-variant-tooltip">
-          Create a new product with any name, like "Shipping Protection", with no price. Make sure it's available on the storefront.
+          Create a new product with any name, like "Shipping Protection", with price "0". Make sure it's available on the storefront.
         </s-tooltip>        
 
         <s-box paddingBlockStart="400">
