@@ -31,6 +31,7 @@ model CartFeeSettings {
   id        Int      @id @default(autoincrement())
   shop      String   @unique
   enabled   Boolean  @default(false)
+  required  Boolean  @default(false)
   title     String   @default("Handling fee")
   info      String   @default("")
   type      String   @default("percentage")

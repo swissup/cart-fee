@@ -54,6 +54,7 @@ export async function loader({request}) {
   if (!settings) {
     return Response.json({
       enabled: false,
+      required: false,
       title: "Handling fee",
       info: "",
       type: "percentage",
@@ -64,6 +65,7 @@ export async function loader({request}) {
 
   return Response.json({
     enabled: settings.enabled,
+    required: settings.required ?? false,
     title: settings.title,
     info: settings.info,
     type: settings.type,

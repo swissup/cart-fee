@@ -1,0 +1,18 @@
+query Input {
+  shop {
+    metafield(namespace: "$app", key: "cart_fee_config") {
+      jsonValue
+    }
+  }
+  cart {
+    lines {
+      quantity
+      merchandise {
+        __typename
+        ... on ProductVariant {
+          id
+        }
+      }
+    }
+  }
+}

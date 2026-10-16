@@ -1,0 +1,4 @@
+{
+  "name": "Cart fee checkout validation",
+  "description": "Blocks checkout when a required cart fee is missing."
+}

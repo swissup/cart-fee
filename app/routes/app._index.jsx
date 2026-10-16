@@ -178,6 +178,149 @@ export async function action({ request }) {
     }
   }
 
+  const shopResponse = await admin.graphql(
+    `#graphql
+      query ShopId {
+        shop {
+          id
+        }
+      }
+    `,
+  );
+  const shopData = await shopResponse.json();
+  if (shopData.errors?.length || !shopData.data?.shop?.id) {
+    return {
+      error: shopData.errors?.map(({message}) => message).join(" ") ||
+        "Unable to load the shop configuration.",
+    };
+  }
+
+  const configResponse = await admin.graphql(
+    `#graphql
+      mutation SetCartFeeConfig($metafields: [MetafieldsSetInput!]!) {
+        metafieldsSet(metafields: $metafields) {
+          userErrors {
+            field
+            message
+          }
+        }
+      }
+    `,
+    {
+      variables: {
+        metafields: [{
+          ownerId: shopData.data.shop.id,
+          namespace: "$app",
+          key: "cart_fee_config",
+          type: "json",
+          value: JSON.stringify({
+            enabled,
+            feeVariantId,
+          }),
+        }],
+      },
+    },
+  );
+  const configData = await configResponse.json();
+  const configErrors = [
+    ...(configData.errors || []).map(({message}) => message),
+    ...(configData.data?.metafieldsSet?.userErrors || []).map(({message}) => message),
+  ];
+  if (!configData.data?.metafieldsSet || configErrors.length) {
+    return {
+      error: configErrors.join(" ") || "Unable to save cart fee validation settings.",
+    };
+  }
+
+  if (enabled) {
+    const validationsResponse = await admin.graphql(
+      `#graphql
+        query CartFeeValidation {
+          validations(first: 250) {
+            nodes {
+              id
+              enabled
+              shopifyFunction {
+                handle
+              }
+            }
+          }
+        }
+      `,
+    );
+    const validationsData = await validationsResponse.json();
+    if (validationsData.errors?.length) {
+      return {
+        error: validationsData.errors.map(({message}) => message).join(" "),
+      };
+    }
+
+    const validationNodes = validationsData.data?.validations?.nodes;
+    if (!Array.isArray(validationNodes)) {
+      return {
+        error: "Unable to load the cart fee checkout validation.",
+      };
+    }
+
+    const validation = validationNodes.find(
+      (item) => item.shopifyFunction?.handle === "cart-fee-validation",
+    );
+    const validationResponse = validation
+      ? !validation.enabled
+        ? await admin.graphql(
+            `#graphql
+              mutation EnableCartFeeValidation($id: ID!) {
+                validationUpdate(id: $id, validation: {
+                  enable: true,
+                  blockOnFailure: true
+                }) {
+                  userErrors {
+                    field
+                    message
+                  }
+                }
+              }
+            `,
+            {variables: {id: validation.id}},
+          )
+        : null
+      : await admin.graphql(
+          `#graphql
+            mutation CreateCartFeeValidation {
+              validationCreate(validation: {
+                functionHandle: "cart-fee-validation",
+                enable: true,
+                blockOnFailure: true
+              }) {
+                userErrors {
+                  field
+                  message
+                }
+              }
+            }
+          `,
+        );
+
+    if (validationResponse) {
+      const validationData = await validationResponse.json();
+      const validationErrors = [
+        ...(validationData.errors || []).map(({message}) => message),
+        ...(validationData.data?.validationUpdate?.userErrors ||
+          validationData.data?.validationCreate?.userErrors ||
+          []).map(({message}) => message),
+      ];
+      const validationPayload =
+        validationData.data?.validationUpdate ||
+        validationData.data?.validationCreate;
+      if (!validationPayload || validationErrors.length) {
+        return {
+          error: validationErrors.join(" ") ||
+            "Unable to activate the cart fee checkout validation.",
+        };
+      }
+    }
+  }
+
   await prisma.cartFeeSettings.upsert({
     where: {
       shop: session.shop,

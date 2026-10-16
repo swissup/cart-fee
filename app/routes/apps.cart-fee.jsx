@@ -47,6 +47,7 @@ export async function loader({request}) {
 
   return Response.json({
     enabled: settings.enabled,
+    required: settings.required,
     title: settings.title,
     type: settings.type,
     value: Number(settings.value),
