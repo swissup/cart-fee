@@ -7,6 +7,37 @@ import prisma from "../db.server";
 
 export async function loader({ request }) {
   const { admin, session } = await authenticate.admin(request);
+  // Save user name & email
+  const shopResponse = await admin.graphql(
+    `#graphql
+      query ShopDetails {
+        shop {
+          name
+          email
+        }
+      }
+    `,
+  );
+  const shopData = await shopResponse.json();
+  const shop = shopData.data?.shop;
+  if (!shop) {
+    throw new Error("Unable to retrieve Shopify shop details.");
+  }
+  
+  await prisma.user.upsert({
+    where: {
+      shop: session.shop,
+    },
+    update: {
+      name: shop.name,
+      email: shop.email,
+    },
+    create: {
+      shop: session.shop,
+      name: shop.name,
+      email: shop.email,
+    },
+  });
 
   let settings = await prisma.cartFeeSettings.findUnique({
     where: {

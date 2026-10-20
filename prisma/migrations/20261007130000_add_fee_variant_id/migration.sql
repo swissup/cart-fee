@@ -1,1 +1,0 @@
-ALTER TABLE "CartFeeSettings" ADD COLUMN "feeVariantId" TEXT;

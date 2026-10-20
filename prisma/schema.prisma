@@ -11,32 +11,40 @@ model Session {
   id                  String    @id
   shop                String
   state               String
-  isOnline             Boolean   @default(false)
-  scope                String?
-  expires              DateTime?
-  accessToken          String
-  userId               BigInt?
-  firstName            String?
-  lastName             String?
-  email                String?
+  isOnline            Boolean   @default(false)
+  scope               String?
+  expires             DateTime?
+  accessToken         String
+  userId              BigInt?
+  firstName           String?
+  lastName            String?
+  email               String?
   accountOwner        Boolean   @default(false)
-  locale               String?
-  collaborator         Boolean?  @default(false)
+  locale              String?
+  collaborator        Boolean?  @default(false)
   emailVerified       Boolean?  @default(false)
   refreshToken        String?
   refreshTokenExpires DateTime?
+  expiresAt           DateTime?
+  createdAt           DateTime  @default(now())
+}
+
+model User {
+  id    Int    @id @default(autoincrement())
+  shop  String @unique
+  name  String
+  email String
 }
 
 model CartFeeSettings {
-  id        Int      @id @default(autoincrement())
-  shop      String   @unique
-  enabled   Boolean  @default(false)
-  required  Boolean  @default(false)
-  title     String   @default("Handling fee")
-  info      String   @default("")
-  type      String   @default("percentage")
-  value     Decimal  @default(0)
+  id           Int      @id @default(autoincrement())
+  shop         String   @unique
+  enabled      Boolean  @default(false)
+  title        String   @default("Handling fee")
+  info         String   @default("")
+  type         String   @default("fixed")
+  value        Decimal  @default(0)
   feeVariantId String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
